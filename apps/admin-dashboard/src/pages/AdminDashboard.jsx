@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { getStoredUser } from '../utils/auth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -11,11 +12,18 @@ export default function AdminDashboard() {
     totalDisputes: 0,
     openDisputes: 0,
   });
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    const currentUser = getStoredUser();
+    if (!currentUser || currentUser.role !== 'admin') {
+      navigate('/login');
+      return;
+    }
+    setUser(currentUser);
     fetchStats();
-  }, []);
+  }, [navigate]);
 
   const fetchStats = async () => {
     try {
@@ -26,11 +34,21 @@ export default function AdminDashboard() {
     }
   };
 
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="admin-dashboard">
       <header>
-        <h1>Admin Dashboard</h1>
+        <h1>Admin Dashboard - {user.name}</h1>
         <nav>
+          <span>Welcome, {user.email}</span>
+          <button onClick={() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/login');
+          }}>Logout</button>
           <button onClick={() => navigate('/disputes')}>Disputes</button>
           <button onClick={() => navigate('/audit')}>Audit Logs</button>
         </nav>

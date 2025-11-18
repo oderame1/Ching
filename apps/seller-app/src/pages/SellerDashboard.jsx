@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { getStoredUser } from '../utils/auth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function SellerDashboard() {
   const [escrows, setEscrows] = useState([]);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    const currentUser = getStoredUser();
+    if (!currentUser || currentUser.role !== 'seller') {
+      navigate('/login');
+      return;
+    }
+    setUser(currentUser);
     fetchEscrows();
-  }, []);
+  }, [navigate]);
 
   const fetchEscrows = async () => {
     try {
@@ -21,9 +29,23 @@ export default function SellerDashboard() {
     }
   };
 
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="dashboard">
-      <h1>Seller Dashboard</h1>
+      <header>
+        <h1>Seller Dashboard - {user.name}</h1>
+        <div>
+          <span>Welcome, {user.email}</span>
+          <button onClick={() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/login');
+          }}>Logout</button>
+        </div>
+      </header>
       <div className="escrows-list">
         {escrows.length === 0 ? (
           <p>No escrows yet.</p>

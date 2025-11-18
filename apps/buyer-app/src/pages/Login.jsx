@@ -16,7 +16,19 @@ export default function Login() {
         email,
         password,
       });
+      
+      // Store token and user info
       localStorage.setItem('token', response.data.accessToken);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      
+      // Check if user is a buyer
+      if (response.data.user.role !== 'buyer') {
+        alert(`Access denied. This app is for buyers only. Your role is: ${response.data.user.role}`);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return;
+      }
+      
       navigate('/dashboard');
     } catch (error) {
       alert('Login failed: ' + (error.response?.data?.error || error.message));

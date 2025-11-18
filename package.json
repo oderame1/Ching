@@ -1,35 +1,40 @@
 {
-  "name": "escrow-payment-platform",
+  "name": "escrow-platform",
   "version": "1.0.0",
-  "description": "Microservices-based escrow payment platform",
+  "description": "Full production-level escrow platform for the Nigerian market",
   "private": true,
   "workspaces": [
-    "services/*",
-    "apps/*"
+    "frontend",
+    "backend",
+    "worker",
+    "webhooks",
+    "shared",
+    "tests"
   ],
   "scripts": {
-    "install:all": "npm install && npm run install:services && npm run install:apps",
-    "install:services": "cd services && for dir in */; do cd \"$dir\" && npm install && cd ..; done",
-    "install:apps": "cd apps && for dir in */; do cd \"$dir\" && npm install && cd ..; done",
-    "dev": "concurrently \"npm run dev:services\" \"npm run dev:apps\"",
-    "dev:services": "concurrently \"npm run dev --prefix services/api-gateway\" \"npm run dev --prefix services/auth-service\" \"npm run dev --prefix services/business-logic-service\" \"npm run dev --prefix services/payment-service\" \"npm run dev --prefix services/webhook-listener-service\" \"npm run dev --prefix services/notification-service\" \"npm run dev --prefix services/fraud-service\" \"npm run dev --prefix services/audit-service\"",
-    "dev:apps": "concurrently \"npm run dev --prefix apps/buyer-app\" \"npm run dev --prefix apps/seller-app\" \"npm run dev --prefix apps/admin-dashboard\"",
-    "build": "npm run build --workspaces",
-    "migrate": "cd services/business-logic-service && npm run migrate",
-    "test": "npm run test --workspaces",
-    "security:audit": "npm audit --workspaces --audit-level=moderate",
-    "security:audit-fix": "npm audit fix --workspaces",
-    "security:check": "npm run security:audit && npm run security:outdated",
-    "security:outdated": "npm outdated --workspaces",
-    "security:scan": "npm run security:audit && npm run security:outdated && npm run security:snyk",
-    "security:snyk": "snyk test --all-projects || echo 'Snyk not installed. Run: npm install -g snyk && snyk auth'",
-    "security:all": "npm run security:scan"
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:worker": "npm run dev --workspace=worker",
+    "dev:webhooks": "npm run dev --workspace=webhooks",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace=tests",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "migrate": "npm run migrate --workspace=backend",
+    "migrate:dev": "npm run migrate:dev --workspace=backend",
+    "generate": "npm run generate --workspace=backend",
+    "docker:up": "docker-compose -f infra/docker-compose.yml up -d",
+    "docker:down": "docker-compose -f infra/docker-compose.yml down",
+    "docker:logs": "docker-compose -f infra/docker-compose.yml logs -f"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }
-

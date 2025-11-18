@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { requireBuyer, getStoredUser } from '../utils/auth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function Dashboard() {
   const [escrows, setEscrows] = useState([]);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if user is a buyer
+    if (!requireBuyer(navigate)) {
+      return;
+    }
+    
+    const currentUser = getStoredUser();
+    setUser(currentUser);
     fetchEscrows();
-  }, []);
+  }, [navigate]);
 
   const fetchEscrows = async () => {
     try {
@@ -25,11 +34,23 @@ export default function Dashboard() {
     }
   };
 
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="dashboard">
       <header>
-        <h1>My Escrows</h1>
-        <button onClick={() => navigate('/escrow/new')}>Create Escrow</button>
+        <h1>My Escrows - {user.name}</h1>
+        <div>
+          <span>Welcome, {user.email}</span>
+          <button onClick={() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/');
+          }}>Logout</button>
+          <button onClick={() => navigate('/escrow/new')}>Create Escrow</button>
+        </div>
       </header>
       <div className="escrows-list">
         {escrows.length === 0 ? (

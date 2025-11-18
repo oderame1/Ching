@@ -1,0 +1,26 @@
+FROM node:18-alpine AS base
+WORKDIR /app
+
+FROM base AS deps
+COPY package.json package-lock.json ./
+COPY webhooks/package.json ./webhooks/
+COPY shared/package.json ./shared/
+COPY backend/package.json ./backend/
+RUN npm ci
+
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+WORKDIR /app/webhooks
+RUN npm run build
+
+FROM base AS runner
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/webhooks/dist ./webhooks/dist
+COPY --from=build /app/webhooks/package.json ./webhooks/
+COPY --from=build /app/shared ./shared
+COPY --from=build /app/backend ./backend
+WORKDIR /app/webhooks
+CMD ["npm", "start"]
+

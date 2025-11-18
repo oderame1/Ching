@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { getStoredUser } from '../utils/auth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -9,8 +10,13 @@ export default function Disputes() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const user = getStoredUser();
+    if (!user || user.role !== 'admin') {
+      navigate('/login');
+      return;
+    }
     fetchDisputes();
-  }, []);
+  }, [navigate]);
 
   const fetchDisputes = async () => {
     try {

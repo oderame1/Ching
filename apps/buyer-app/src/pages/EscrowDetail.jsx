@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { requireBuyer } from '../utils/auth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -10,8 +11,11 @@ export default function EscrowDetail() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!requireBuyer(navigate)) {
+      return;
+    }
     fetchEscrow();
-  }, [id]);
+  }, [id, navigate]);
 
   const fetchEscrow = async () => {
     try {
