@@ -1,0 +1,211 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: escrow-postgres
+    environment:
+      POSTGRES_USER: escrow_user
+      POSTGRES_PASSWORD: escrow_password
+      POSTGRES_DB: escrow_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U escrow_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: escrow-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: escrow-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - BUSINESS_SERVICE_URL=http://business-logic-service:3002
+      - PAYMENT_SERVICE_URL=http://payment-service:3003
+    depends_on:
+      - redis
+      - auth-service
+      - business-logic-service
+      - payment-service
+    networks:
+      - escrow-network
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: escrow-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://escrow_user:escrow_password@postgres:5432/escrow_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+      - JWT_EXPIRES_IN=24h
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - escrow-network
+
+  business-logic-service:
+    build:
+      context: ./services/business-logic-service
+      dockerfile: Dockerfile
+    container_name: escrow-business-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - DATABASE_URL=postgresql://escrow_user:escrow_password@postgres:5432/escrow_db
+      - REDIS_URL=redis://redis:6379
+      - EVENT_QUEUE_URL=redis://redis:6379
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PAYMENT_SERVICE_URL=http://payment-service:3003
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - escrow-network
+
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: escrow-payment-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+      - DATABASE_URL=postgresql://escrow_user:escrow_password@postgres:5432/escrow_db
+      - REDIS_URL=redis://redis:6379
+      - EVENT_QUEUE_URL=redis://redis:6379
+      - WEBHOOK_SERVICE_URL=http://webhook-listener-service:3004
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - escrow-network
+
+  webhook-listener-service:
+    build:
+      context: ./services/webhook-listener-service
+      dockerfile: Dockerfile
+    container_name: escrow-webhook-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=production
+      - PORT=3004
+      - DATABASE_URL=postgresql://escrow_user:escrow_password@postgres:5432/escrow_db
+      - EVENT_QUEUE_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - escrow-network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: escrow-notification-service
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=production
+      - PORT=3005
+      - EVENT_QUEUE_URL=redis://redis:6379
+      - WHATSAPP_API_KEY=${WHATSAPP_API_KEY}
+      - SMS_API_KEY=${SMS_API_KEY}
+      - EMAIL_API_KEY=${EMAIL_API_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - escrow-network
+
+  fraud-service:
+    build:
+      context: ./services/fraud-service
+      dockerfile: Dockerfile
+    container_name: escrow-fraud-service
+    ports:
+      - "3006:3006"
+    environment:
+      - NODE_ENV=production
+      - PORT=3006
+      - DATABASE_URL=postgresql://escrow_user:escrow_password@postgres:5432/escrow_db
+      - REDIS_URL=redis://redis:6379
+      - EVENT_QUEUE_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - escrow-network
+
+  audit-service:
+    build:
+      context: ./services/audit-service
+      dockerfile: Dockerfile
+    container_name: escrow-audit-service
+    ports:
+      - "3007:3007"
+    environment:
+      - NODE_ENV=production
+      - PORT=3007
+      - DATABASE_URL=postgresql://escrow_user:escrow_password@postgres:5432/escrow_db
+      - EVENT_QUEUE_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - escrow-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  escrow-network:
+    driver: bridge
+
