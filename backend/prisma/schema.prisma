@@ -217,7 +217,7 @@ model NotificationLog {
   recipient String
   subject   String?
   message   String   @db.Text
-  status    String   @default(pending) // pending, sent, failed
+  status    String   @default("pending") // pending, sent, failed
   errorMessage String? @db.Text
   sentAt    DateTime?
   createdAt DateTime @default(now())
