@@ -1,140 +1,350 @@
 # How to Use the Escrow Payment Platform
 
-## Quick Start
+A comprehensive guide to using the Nigerian Escrow Platform - from setup to advanced workflows.
 
-### 1. Start Infrastructure
+## 📋 Table of Contents
+
+1. [Quick Start](#quick-start)
+2. [Platform Access](#platform-access)
+3. [User Workflows](#user-workflows)
+4. [API Usage](#api-usage)
+5. [Complete Examples](#complete-examples)
+6. [Testing & Debugging](#testing--debugging)
+7. [Troubleshooting](#troubleshooting)
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+ and npm 9+
+- PostgreSQL 15+ (running locally or via Docker)
+- Redis 7+ (running locally or via Docker)
+
+### Step 1: Install Dependencies
+
+```bash
+npm install
+```
+
+### Step 2: Configure Environment
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit .env with your configuration
+# Minimum required:
+# - DATABASE_URL
+# - REDIS_URL
+# - JWT_SECRET
+# - REFRESH_TOKEN_SECRET
+```
+
+### Step 3: Setup Database
+
+```bash
+# Generate Prisma Client
+npm run generate
+
+# Run database migrations
+npm run migrate:dev
+
+# (Optional) Seed test data
+npm run seed
+```
+
+### Step 4: Start Infrastructure
+
+**Option A: Using Docker (Recommended)**
 ```bash
 # Start PostgreSQL and Redis
+docker-compose up -d postgres redis
+
+# Or use the setup scripts
+./setup-postgres.sh
+./setup-redis.sh
+```
+
+**Option B: Local Services**
+```bash
+# macOS with Homebrew
 brew services start postgresql@14 redis
 
-# Or if already running, verify:
+# Verify services are running
 redis-cli ping  # Should return: PONG
 pg_isready     # Should return: accepting connections
 ```
 
-### 2. Start All Services
-```bash
-# Start backend services and frontend apps
-npm run dev
+### Step 5: Start Development Servers
 
-# Or start separately:
-npm run dev:services  # Backend only
-npm run dev:apps      # Frontend only
+**Start All Services:**
+```bash
+npm run dev
 ```
 
-### 3. Access the Platform
+**Or Start Individually:**
+```bash
+# Terminal 1: Backend API
+npm run dev:backend
 
-**Frontend Applications:**
-- **Buyer App**: http://localhost:5173
-- **Seller App**: http://localhost:5174
+# Terminal 2: Frontend (Next.js)
+npm run dev:frontend
 
-- **Admin Dashboard**: http://localhost:5175
+# Terminal 3: Worker (Background Jobs)
+npm run dev:worker
 
+# Terminal 4: Webhooks Service
+npm run dev:webhooks
+```
 
-**API Gateway**: http://localhost:3000
+---
 
-## User Workflows
+## 🌐 Platform Access
 
-### As a Buyer
+### Frontend Applications
+
+| Application | URL | Description |
+|------------|-----|-------------|
+| **Main Frontend** | http://localhost:3000 | Next.js app with all features |
+| **Buyer App** | http://localhost:5173 | Dedicated buyer interface |
+| **Seller App** | http://localhost:5174 | Dedicated seller interface |
+| **Admin Dashboard** | http://localhost:5175 | Admin management interface |
+
+### Backend Services
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Backend API** | http://localhost:3001 | Main API server |
+| **Health Check** | http://localhost:3001/health | Service health status |
+
+### Test Credentials
+
+See [SEED_DATA.md](./SEED_DATA.md) for all test users.
+
+**Quick Login:**
+- **Buyer**: `buyer1@test.escrow` / `password123`
+- **Seller**: `seller1@test.escrow` / `password123`
+- **Admin**: `admin@test.escrow` / `admin123`
+
+---
+
+## 👥 User Workflows
+
+### 🔵 As a Buyer
 
 #### 1. Login
-- Go to: http://localhost:5173
-- Email: `buyer1@test.escrow`
-- Password: `password123`
+- Go to: http://localhost:3000 (or http://localhost:5173 for buyer app)
+- Enter email: `buyer1@test.escrow`
+- Enter password: `password123`
+- You'll be redirected to the buyer dashboard
 
 #### 2. Create an Escrow Transaction
+
+**Via Frontend:**
 1. Click "Create Escrow" button
 2. Enter seller email: `seller1@test.escrow`
 3. Enter amount: `100.00`
-4. Add description (optional)
-5. Click "Create Escrow"
+4. Select currency: `NGN` (or USD)
+5. Add description (optional): "Payment for web design services"
+6. Click "Create Escrow"
+7. You'll receive a confirmation with escrow ID
 
-#### 3. Fund the Escrow
-1. View your escrow in the dashboard
-2. Click on the escrow to see details
-3. Fund the escrow (money moves from your wallet to escrow)
+**Via API:**
+```bash
+# Get your auth token first (see API Usage section)
+curl -X POST http://localhost:3001/api/escrow/initiate \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "counterpartyEmail": "seller1@test.escrow",
+    "amount": 100.00,
+    "currency": "NGN",
+    "description": "Payment for services"
+  }'
+```
 
-#### 4. Release Escrow (After Seller Delivers)
+#### 3. Pay for the Escrow
+
+**Via Frontend:**
+1. Go to your dashboard
+2. Click on the escrow you created
+3. Click "Pay Now" or "Initialize Payment"
+4. Select payment gateway: Paystack or Monnify
+5. Complete payment on the gateway's page
+6. You'll be redirected back after successful payment
+
+**Via API:**
+```bash
+curl -X POST http://localhost:3001/api/payments/initialize \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "escrowId": "escrow-uuid",
+    "gateway": "paystack"
+  }'
+```
+
+#### 4. Mark as Received (After Seller Delivers)
+
+**Via Frontend:**
 1. Go to escrow details
-2. Click "Release Escrow"
-3. Money is transferred to seller
+2. Click "Mark as Received"
+3. Confirm the action
+4. Funds will be released to seller automatically
 
-#### 5. Raise a Dispute (If Needed)
+**Via API:**
+```bash
+curl -X POST http://localhost:3001/api/escrow/ESCROW_ID/received \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### 5. Cancel Escrow (If Needed)
+
+**Via Frontend:**
 1. Go to escrow details
-2. Click "Raise Dispute"
-3. Enter reason and description
-4. Upload evidence (optional)
-5. Admin will review and resolve
+2. Click "Cancel Escrow"
+3. Confirm cancellation
+4. Funds will be refunded to your wallet
 
-### As a Seller
+**Via API:**
+```bash
+curl -X POST http://localhost:3001/api/escrow/ESCROW_ID/cancel \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### 🟢 As a Seller
 
 #### 1. Login
-- Go to: http://localhost:5174
-- Email: `seller1@test.escrow`
-- Password: `password123`
+- Go to: http://localhost:3000 (or http://localhost:5174 for seller app)
+- Enter email: `seller1@test.escrow`
+- Enter password: `password123`
+- You'll be redirected to the seller dashboard
 
 #### 2. View Escrows
 - See all escrows assigned to you
-- Track status: pending, funded, in_progress, completed
+- Track status: `pending`, `waiting_for_payment`, `paid`, `delivered`, `received`, `released`
 - View buyer details and transaction amount
+- Filter by status or date
 
-#### 3. Track Transactions
-- Monitor escrow status
+#### 3. Mark as Delivered
+
+**Via Frontend:**
+1. Go to escrow details
+2. Click "Mark as Delivered"
+3. Add delivery notes (optional)
+4. Confirm delivery
+5. Buyer will be notified
+
+**Via API:**
+```bash
+curl -X POST http://localhost:3001/api/escrow/ESCROW_ID/delivered \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "deliveryNotes": "Item shipped via DHL, tracking: ABC123"
+  }'
+```
+
+#### 4. Track Transactions
+- Monitor escrow status in real-time
 - See when buyer releases funds
 - View transaction history
+- Export transaction reports
 
-### As an Admin
+### 🔴 As an Admin
 
 #### 1. Login
-- Go to: http://localhost:5175
-- Email: `admin@test.escrow`
-- Password: `admin123`
+- Go to: http://localhost:3000/admin (or http://localhost:5175 for admin dashboard)
+- Enter email: `admin@test.escrow`
+- Enter password: `admin123`
+- You'll be redirected to the admin dashboard
 
 #### 2. View System Statistics
 - Total escrows
 - Active escrows
+- Total transactions
 - Total disputes
-- Open disputes
+- System health metrics
 
-#### 3. Manage Disputes
-1. Go to "Disputes" section
-2. View all open disputes
-3. Click on a dispute to see details
-4. Review evidence and descriptions
-5. Resolve dispute:
-   - Favor Buyer (refund buyer)
-   - Favor Seller (pay seller)
-   - Partial (split amount)
-   - Refund (return to buyer)
+#### 3. Manage Escrows
 
-#### 4. View Audit Logs
-- See all system activities
-- Filter by user, action, entity type
-- Track changes and events
-
-## API Usage
-
-### Authentication
-
-#### Register New User
+**View All Escrows:**
 ```bash
-curl -X POST http://localhost:3000/api/auth/register \
+curl -X GET http://localhost:3001/api/admin/escrows \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+**Release Escrow Funds:**
+```bash
+curl -X POST http://localhost:3001/api/admin/release/ESCROW_ID \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+**Refund Escrow:**
+```bash
+curl -X POST http://localhost:3001/api/admin/refund/ESCROW_ID \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "newuser@example.com",
-    "password": "password123",
-    "name": "New User",
-    "role": "buyer"
+    "reason": "Buyer requested refund"
   }'
 ```
 
-#### Login
+#### 4. View Users
 ```bash
-curl -X POST http://localhost:3000/api/auth/login \
+curl -X GET http://localhost:3001/api/admin/users \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+#### 5. View Audit Logs
+```bash
+curl -X GET http://localhost:3001/api/admin/audit-logs \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+---
+
+## 🔌 API Usage
+
+### Base URL
+
+All API requests should be made to:
+```
+http://localhost:3001
+```
+
+### Authentication
+
+The platform uses **OTP-based authentication** for security.
+
+#### Step 1: Request OTP
+
+```bash
+curl -X POST http://localhost:3001/api/auth/request-otp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "buyer1@test.escrow"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": "OTP sent to your email",
+  "expiresIn": 300
+}
+```
+
+#### Step 2: Verify OTP
+
+```bash
+curl -X POST http://localhost:3001/api/auth/verify \
   -H "Content-Type: application/json" \
   -d '{
     "email": "buyer1@test.escrow",
-    "password": "password123"
+    "otp": "123456"
   }'
 ```
 
@@ -144,245 +354,503 @@ curl -X POST http://localhost:3000/api/auth/login \
   "user": {
     "id": "uuid",
     "email": "buyer1@test.escrow",
+    "name": "John Buyer",
     "role": "buyer"
   },
-  "accessToken": "jwt-token",
-  "refreshToken": "refresh-token"
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
-#### Use Token
+#### Step 3: Use Token in Requests
+
 ```bash
-# Save token from login response
-TOKEN="your-access-token"
+# Save token from verify response
+TOKEN="your-access-token-here"
 
 # Use in subsequent requests
-curl -X GET http://localhost:3000/api/auth/me \
+curl -X GET http://localhost:3001/api/escrow/ESCROW_ID \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-### Escrow Operations
+### Escrow Endpoints
 
-#### Create Escrow
+#### Create Escrow (Initiate)
+
 ```bash
-curl -X POST http://localhost:3000/api/business/escrow \
+curl -X POST http://localhost:3001/api/escrow/initiate \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "seller_id": "seller-uuid",
+    "counterpartyEmail": "seller1@test.escrow",
     "amount": 100.00,
-    "currency": "USD",
-    "description": "Payment for services"
+    "currency": "NGN",
+    "description": "Payment for web design",
+    "expiresInDays": 7
   }'
 ```
 
-#### Get Escrow Details
-```bash
-curl -X GET http://localhost:3000/api/business/escrow/ESCROW_ID \
-  -H "Authorization: Bearer $TOKEN"
+**Response:**
+```json
+{
+  "id": "escrow-uuid",
+  "buyerId": "buyer-uuid",
+  "sellerId": "seller-uuid",
+  "amount": 100.00,
+  "currency": "NGN",
+  "status": "pending",
+  "initiatedBy": "buyer",
+  "expiresAt": "2024-01-15T10:00:00Z",
+  "createdAt": "2024-01-08T10:00:00Z"
+}
 ```
 
-#### Release Escrow
+#### Get Escrow Details
+
 ```bash
-curl -X POST http://localhost:3000/api/business/escrow/ESCROW_ID/release \
+curl -X GET http://localhost:3001/api/escrow/ESCROW_ID \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 #### Cancel Escrow
+
 ```bash
-curl -X POST http://localhost:3000/api/business/escrow/ESCROW_ID/cancel \
+curl -X POST http://localhost:3001/api/escrow/ESCROW_ID/cancel \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-### Payment Operations
+#### Mark as Delivered (Seller)
 
-#### Get Wallet
 ```bash
-curl -X GET http://localhost:3000/api/payment/wallet \
+curl -X POST http://localhost:3001/api/escrow/ESCROW_ID/delivered \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "deliveryNotes": "Item delivered successfully"
+  }'
+```
+
+#### Mark as Received (Buyer)
+
+```bash
+curl -X POST http://localhost:3001/api/escrow/ESCROW_ID/received \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-#### Deposit to Wallet
+### Payment Endpoints
+
+#### Initialize Payment
+
 ```bash
-curl -X POST http://localhost:3000/api/payment/wallet/deposit \
+curl -X POST http://localhost:3001/api/payments/initialize \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 500.00,
-    "currency": "USD",
-    "payment_method": "card",
-    "payment_method_id": "card-id"
+    "escrowId": "escrow-uuid",
+    "gateway": "paystack"
   }'
 ```
 
-#### Add Payment Card
-```bash
-curl -X POST http://localhost:3000/api/payment/cards \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "card_number": "4242424242424242",
-    "expiry_month": 12,
-    "expiry_year": 2025,
-    "cvv": "123",
-    "cardholder_name": "John Buyer"
-  }'
+**Response:**
+```json
+{
+  "authorizationUrl": "https://paystack.com/pay/...",
+  "reference": "TXN_123456789",
+  "accessCode": "ACCESS_CODE"
+}
 ```
 
-### Dispute Operations
+#### Get Payment Status
 
-#### Create Dispute
 ```bash
-curl -X POST http://localhost:3000/api/business/disputes \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "escrow_id": "escrow-uuid",
-    "reason": "Item not received",
-    "description": "I paid but never received the item",
-    "evidence_urls": ["https://example.com/proof.jpg"]
-  }'
+curl -X GET http://localhost:3001/api/payments/status/REFERENCE \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-#### Resolve Dispute (Admin Only)
+### Admin Endpoints
+
+All admin endpoints require:
+- Valid JWT token
+- Admin role
+- IP address in allowlist (if configured)
+
+#### Get All Escrows
+
 ```bash
-curl -X POST http://localhost:3000/api/business/disputes/DISPUTE_ID/resolve \
+curl -X GET http://localhost:3001/api/admin/escrows \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+#### Get All Users
+
+```bash
+curl -X GET http://localhost:3001/api/admin/users \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+#### Release Escrow
+
+```bash
+curl -X POST http://localhost:3001/api/admin/release/ESCROW_ID \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+#### Refund Escrow
+
+```bash
+curl -X POST http://localhost:3001/api/admin/refund/ESCROW_ID \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "resolution": "favor_buyer",
-    "admin_notes": "Buyer provided proof of non-delivery"
+    "reason": "Dispute resolved in favor of buyer"
   }'
 ```
 
-## Complete Example Workflow
+#### Get Audit Logs
 
-### 1. Buyer Creates Escrow
 ```bash
-# Login as buyer
-BUYER_TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/login \
+curl -X GET http://localhost:3001/api/admin/audit-logs \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+### Webhook Endpoints
+
+#### Paystack Webhook
+
+```bash
+# This endpoint is called by Paystack
+POST http://localhost:3001/api/webhooks/paystack
+```
+
+#### Monnify Webhook
+
+```bash
+# This endpoint is called by Monnify
+POST http://localhost:3001/api/webhooks/monnify
+```
+
+---
+
+## 📝 Complete Examples
+
+### Example 1: Complete Escrow Flow (Buyer-Initiated)
+
+```bash
+# 1. Request OTP
+curl -X POST http://localhost:3001/api/auth/request-otp \
   -H "Content-Type: application/json" \
-  -d '{"email":"buyer1@test.escrow","password":"password123"}' \
+  -d '{"email": "buyer1@test.escrow"}'
+
+# 2. Verify OTP (save the token)
+TOKEN=$(curl -s -X POST http://localhost:3001/api/auth/verify \
+  -H "Content-Type: application/json" \
+  -d '{"email": "buyer1@test.escrow", "otp": "123456"}' \
   | jq -r '.accessToken')
 
-# Get seller ID
-SELLER_ID=$(curl -s -X GET http://localhost:3000/api/auth/me \
-  -H "Authorization: Bearer $(curl -s -X POST http://localhost:3000/api/auth/login \
-    -H "Content-Type: application/json" \
-    -d '{"email":"seller1@test.escrow","password":"password123"}' \
-    | jq -r '.accessToken')" \
-  | jq -r '.user.id')
-
-# Create escrow
-ESCROW_ID=$(curl -s -X POST http://localhost:3000/api/business/escrow \
-  -H "Authorization: Bearer $BUYER_TOKEN" \
+# 3. Create Escrow
+ESCROW_ID=$(curl -s -X POST http://localhost:3001/api/escrow/initiate \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"seller_id\":\"$SELLER_ID\",\"amount\":100.00}" \
-  | jq -r '.id')
+  -d '{
+    "counterpartyEmail": "seller1@test.escrow",
+    "amount": 100.00,
+    "currency": "NGN",
+    "description": "Payment for services"
+  }' | jq -r '.id')
 
 echo "Escrow created: $ESCROW_ID"
+
+# 4. Initialize Payment
+PAYMENT=$(curl -s -X POST http://localhost:3001/api/payments/initialize \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"escrowId\": \"$ESCROW_ID\", \"gateway\": \"paystack\"}")
+
+echo "Payment URL: $(echo $PAYMENT | jq -r '.authorizationUrl')"
+
+# 5. After payment is confirmed (via webhook), seller marks delivered
+# (Seller would use their own token)
+SELLER_TOKEN="seller-token-here"
+curl -X POST http://localhost:3001/api/escrow/$ESCROW_ID/delivered \
+  -H "Authorization: Bearer $SELLER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"deliveryNotes": "Item delivered"}'
+
+# 6. Buyer marks as received
+curl -X POST http://localhost:3001/api/escrow/$ESCROW_ID/received \
+  -H "Authorization: Bearer $TOKEN"
+
+# 7. Funds are automatically released to seller
 ```
 
-### 2. Fund Escrow (via Payment Service)
-The escrow is automatically funded when buyer initiates payment.
+### Example 2: Seller-Initiated Escrow
 
-### 3. Buyer Releases Escrow
 ```bash
-curl -X POST http://localhost:3000/api/business/escrow/$ESCROW_ID/release \
-  -H "Authorization: Bearer $BUYER_TOKEN"
+# 1. Seller requests OTP and verifies
+SELLER_TOKEN="seller-token-here"
+
+# 2. Seller initiates escrow
+ESCROW_ID=$(curl -s -X POST http://localhost:3001/api/escrow/initiate \
+  -H "Authorization: Bearer $SELLER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "counterpartyEmail": "buyer1@test.escrow",
+    "amount": 200.00,
+    "currency": "NGN",
+    "description": "Payment for product"
+  }' | jq -r '.id')
+
+# 3. Buyer pays (buyer would use their token)
+BUYER_TOKEN="buyer-token-here"
+curl -X POST http://localhost:3001/api/payments/initialize \
+  -H "Authorization: Bearer $BUYER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"escrowId\": \"$ESCROW_ID\", \"gateway\": \"paystack\"}"
+
+# Rest of the flow is the same...
 ```
 
-## Testing with Frontend Apps
+---
 
-### Buyer App Workflow
-1. Open http://localhost:5173
-2. Login with `buyer1@test.escrow` / `password123`
-3. Click "Create Escrow"
-4. Enter seller email and amount
-5. View escrows in dashboard
-6. Click escrow to see details
-7. Release when ready
-
-### Seller App Workflow
-1. Open http://localhost:5174
-2. Login with `seller1@test.escrow` / `password123`
-3. View escrows assigned to you
-4. Track transaction status
-
-### Admin Dashboard Workflow
-1. Open http://localhost:5175
-2. Login with `admin@test.escrow` / `admin123`
-3. View system statistics
-4. Go to Disputes section
-5. Review and resolve disputes
-6. View audit logs
-
-## Common Tasks
+## 🧪 Testing & Debugging
 
 ### Check Service Health
+
 ```bash
-# All services
-for port in 3000 3001 3002 3003 3004 3005 3006 3007; do
-  echo "Port $port: $(curl -s http://localhost:$port/health | jq -r '.service')"
-done
+# Backend health check
+curl http://localhost:3001/health
+
+# Should return:
+# {"status":"ok","timestamp":"2024-01-08T10:00:00.000Z"}
 ```
 
-### View Database Users
+### View Database Data
+
 ```bash
-psql "postgresql://escrow_user:escrow_password@localhost:5432/escrow_db" \
-  -c "SELECT email, name, role FROM users WHERE email LIKE '%@test.escrow';"
+# Connect to database
+psql "postgresql://escrow_user:escrow_password@localhost:5432/escrow_db"
+
+# View users
+SELECT email, name, role FROM users WHERE email LIKE '%@test.escrow';
+
+# View escrows
+SELECT id, buyer_id, seller_id, amount, status, created_at FROM escrows;
+
+# View transactions
+SELECT id, escrow_id, amount, status, gateway FROM transactions;
 ```
 
-### View Wallets
+### View Redis Data
+
 ```bash
-psql "postgresql://escrow_user:escrow_password@localhost:5432/escrow_db" \
-  -c "SELECT u.email, w.balance FROM users u JOIN wallets w ON u.id = w.user_id;"
+# Connect to Redis
+redis-cli
+
+# View all keys
+KEYS *
+
+# View queue length
+LLEN bull:whatsapp:waiting
+LLEN bull:email:waiting
 ```
 
-### View Escrows
-```bash
-psql "postgresql://escrow_user:escrow_password@localhost:5432/escrow_db" \
-  -c "SELECT id, buyer_id, seller_id, amount, status FROM escrows;"
-```
+### Run Debug Script
 
-## Troubleshooting
-
-### Services Not Responding
 ```bash
-# Check if services are running
+# Comprehensive system check
+./debug.sh
+
+# Quick status check
 ./quick-debug.sh
-
-# Restart services
-pkill -f "tsx watch"
-npm run dev:services
 ```
 
-### Can't Login
-- Verify user exists: Check `SEED_DATA.md`
-- Verify password: All test users use `password123` (or `admin123` for admins)
-- Check auth service: `curl http://localhost:3001/health`
+### Check Logs
 
-### Database Connection Issues
+**Backend logs:**
+- Check terminal where `npm run dev:backend` is running
+- Logs include request/response details, errors, and warnings
+
+**Worker logs:**
+- Check terminal where `npm run dev:worker` is running
+- Shows job processing status
+
+---
+
+## 🔧 Troubleshooting
+
+### Services Not Starting
+
+**Problem:** Services fail to start
+
+**Solutions:**
 ```bash
-# Verify database is running
+# 1. Check if ports are already in use
+lsof -i :3001  # Backend
+lsof -i :3000  # Frontend
+lsof -i :5432  # PostgreSQL
+lsof -i :6379  # Redis
+
+# 2. Kill processes if needed
+kill -9 <PID>
+
+# 3. Check environment variables
+cat .env
+
+# 4. Verify database connection
+psql "postgresql://escrow_user:escrow_password@localhost:5432/escrow_db" -c "SELECT 1;"
+
+# 5. Verify Redis connection
+redis-cli ping
+```
+
+### Database Connection Errors
+
+**Problem:** `Error: P1001: Can't reach database server`
+
+**Solutions:**
+```bash
+# 1. Check if PostgreSQL is running
 pg_isready
 
-# Check connection
-psql "postgresql://escrow_user:escrow_password@localhost:5432/escrow_db" -c "SELECT 1;"
+# 2. Start PostgreSQL
+brew services start postgresql@14
+# or
+docker-compose up -d postgres
+
+# 3. Verify connection string in .env
+echo $DATABASE_URL
+
+# 4. Test connection manually
+psql $DATABASE_URL -c "SELECT 1;"
 ```
 
-## Next Steps
+### Redis Connection Errors
 
-1. **Explore the API**: Use the API endpoints to test functionality
-2. **Create Test Escrows**: Use the frontend apps to create transactions
-3. **Test Disputes**: Create disputes and resolve them as admin
-4. **Check Logs**: Monitor service logs for debugging
-5. **Customize**: Modify seed data or add more test users
+**Problem:** `Error: connect ECONNREFUSED 127.0.0.1:6379`
 
-## Resources
+**Solutions:**
+```bash
+# 1. Check if Redis is running
+redis-cli ping
 
-- **API Documentation**: Check service route files in `services/*/src/routes/`
-- **Database Schema**: See migration files in service `database/connection.ts`
-- **Test Data**: See `SEED_DATA.md` for all test credentials
-- **Debugging**: See `DEBUG.md` for troubleshooting guide
+# 2. Start Redis
+brew services start redis
+# or
+docker-compose up -d redis
 
+# 3. Verify connection string in .env
+echo $REDIS_URL
+```
+
+### Authentication Issues
+
+**Problem:** Can't login or OTP not received
+
+**Solutions:**
+```bash
+# 1. Check if user exists
+psql $DATABASE_URL -c "SELECT email, role FROM users WHERE email = 'buyer1@test.escrow';"
+
+# 2. Reseed database if needed
+npm run seed
+
+# 3. Check OTP in database (for testing)
+psql $DATABASE_URL -c "SELECT email, code, expires_at FROM otp_codes WHERE email = 'buyer1@test.escrow' ORDER BY created_at DESC LIMIT 1;"
+
+# 4. Verify JWT_SECRET is set
+echo $JWT_SECRET
+```
+
+### Payment Gateway Issues
+
+**Problem:** Payment initialization fails
+
+**Solutions:**
+```bash
+# 1. Check payment gateway credentials in .env
+# Paystack
+echo $PAYSTACK_SECRET_KEY
+echo $PAYSTACK_PUBLIC_KEY
+
+# Monnify
+echo $MONNIFY_API_KEY
+echo $MONNIFY_SECRET_KEY
+
+# 2. Test gateway connection (if test mode)
+curl -X GET https://api.paystack.com/bank \
+  -H "Authorization: Bearer $PAYSTACK_SECRET_KEY"
+
+# 3. Check webhook URL configuration
+# Should be: http://your-domain.com/api/webhooks/paystack
+```
+
+### Frontend Not Loading
+
+**Problem:** Frontend shows errors or blank page
+
+**Solutions:**
+```bash
+# 1. Check if frontend is running
+curl http://localhost:3000
+
+# 2. Check browser console for errors
+# Open DevTools (F12) and check Console tab
+
+# 3. Verify backend is accessible
+curl http://localhost:3001/health
+
+# 4. Check CORS configuration
+# Backend should allow frontend origin
+```
+
+### Webhook Not Working
+
+**Problem:** Payment webhooks not being received
+
+**Solutions:**
+```bash
+# 1. Check webhook service is running
+curl http://localhost:3001/api/webhooks/paystack
+
+# 2. Verify webhook URL in payment gateway dashboard
+# Paystack: https://dashboard.paystack.com/#/settings/developer
+# Monnify: https://app.monnify.com/settings/webhooks
+
+# 3. Test webhook manually
+curl -X POST http://localhost:3001/api/webhooks/paystack \
+  -H "Content-Type: application/json" \
+  -H "x-paystack-signature: test-signature" \
+  -d '{"event": "charge.success", "data": {...}}'
+
+# 4. Check webhook logs
+# Look for webhook processing in backend logs
+```
+
+---
+
+## 📚 Additional Resources
+
+- **API Documentation**: See [docs/api-spec.md](./docs/api-spec.md)
+- **Architecture**: See [docs/architecture.md](./docs/architecture.md)
+- **Database Schema**: See [docs/database-schema.md](./docs/database-schema.md)
+- **Security Model**: See [docs/security-model.md](./docs/security-model.md)
+- **Deployment Guide**: See [docs/deployment-guide.md](./docs/deployment-guide.md)
+- **Test Data**: See [SEED_DATA.md](./SEED_DATA.md)
+- **Quick Start**: See [QUICK_START.md](./QUICK_START.md)
+- **Debugging Guide**: See [DEBUG.md](./DEBUG.md)
+
+---
+
+## 🆘 Getting Help
+
+If you encounter issues:
+
+1. **Check the logs** - Most errors are logged with details
+2. **Review documentation** - See `/docs` folder
+3. **Run debug scripts** - Use `./debug.sh` or `./quick-debug.sh`
+4. **Check GitHub Issues** - Search for similar problems
+5. **Open a new issue** - Provide error logs and steps to reproduce
+
+---
+
+**Last Updated:** 2024-01-08
