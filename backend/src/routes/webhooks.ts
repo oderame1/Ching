@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { handlePaystackWebhook, handleMonnifyWebhook } from '../controllers/webhooks';
+import { handlePaystackWebhook, handleFlutterwaveWebhook } from '../controllers/webhooks';
 import { webhookRateLimiter } from '../middleware/rateLimiter';
+import { asyncHandler } from '../utils/asyncHandler';
 
 const router = Router();
 
-router.post('/paystack', webhookRateLimiter, handlePaystackWebhook);
-router.post('/monnify', webhookRateLimiter, handleMonnifyWebhook);
+router.post('/paystack', webhookRateLimiter, asyncHandler(handlePaystackWebhook));
+router.post('/flutterwave', webhookRateLimiter, asyncHandler(handleFlutterwaveWebhook));
 
 export default router;
 

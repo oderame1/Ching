@@ -31,7 +31,7 @@ enum EscrowInitiator {
 
 enum PaymentGateway {
   paystack
-  monnify
+  flutterwave
 }
 
 enum PaymentStatus {
@@ -58,8 +58,8 @@ enum TransactionStatus {
 enum WebhookEventType {
   paystack_payment_success
   paystack_payment_failed
-  monnify_payment_success
-  monnify_payment_failed
+  flutterwave_payment_success
+  flutterwave_payment_failed
 }
 
 model User {

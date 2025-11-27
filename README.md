@@ -1,6 +1,6 @@
 # Escrow Platform - Nigerian Market
 
-A production-level escrow platform built for the Nigerian market with support for Paystack and Monnify payment gateways.
+A production-level escrow platform built for the Nigerian market with support for Paystack and Flutterwave payment gateways.
 
 ## 🏗️ Architecture
 
@@ -21,7 +21,7 @@ This is a monorepo containing:
 - ✅ Buyer or Seller can initiate escrow
 - ✅ Complete escrow state machine (pending → paid → delivered → received → released)
 - ✅ Auto-cancel expired escrows
-- ✅ Support for Paystack and Monnify payment gateways
+- ✅ Support for Paystack and Flutterwave payment gateways
 - ✅ Secure webhook processing with HMAC signature verification
 - ✅ Background job processing for notifications and payouts
 

@@ -614,6 +614,29 @@ curl -X POST http://localhost:3001/api/payments/initialize \
 
 ## 🧪 Testing & Debugging
 
+### Test Hub (Recommended for Testing)
+
+The easiest way to test all functionality is through the **Test Hub** - a user-friendly GUI interface.
+
+**Quick Start:**
+1. Start backend: `npm run dev:backend`
+2. Start frontend: `npm run dev:frontend`
+3. Open browser: `http://localhost:3000/test-hub`
+4. Click on any test section to start testing
+
+**Available Test Sections:**
+- 🧪 **Comprehensive Test Suite** - Automated testing of all features
+- 🔐 **Authentication & OTP** - Test login system
+- 💼 **Escrow Management** - Create and manage escrows
+- 💳 **Payments** - Test payment processing
+- 💰 **Payouts** - Check payout status
+- 👤 **User Management** - View and update profiles
+- 📧 **Notifications** - Send test notifications
+
+**For detailed instructions, see:** [TEST_HUB_GUIDE.md](./TEST_HUB_GUIDE.md)
+
+### Manual Testing & Debugging
+
 ### Check Service Health
 
 ```bash

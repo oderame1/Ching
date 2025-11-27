@@ -27,12 +27,23 @@ export const errorHandler = (
     });
   }
 
-  // Unknown error
-  logger.error(err);
-  res.status(500).json({
-    error: 'INTERNAL_ERROR',
-    message: 'An unexpected error occurred',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  // Unknown error - prevent server crash
+  logger.error('Unhandled error:', {
+    message: err.message,
+    stack: err.stack,
+    name: err.name,
   });
+  
+  // Always respond, never let error crash the server
+  if (!res.headersSent) {
+    res.status(500).json({
+      error: 'INTERNAL_ERROR',
+      message: 'An unexpected error occurred',
+      ...(process.env.NODE_ENV === 'development' && { 
+        stack: err.stack,
+        details: err.message 
+      }),
+    });
+  }
 };
 

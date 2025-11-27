@@ -6,6 +6,7 @@ import { generateOTP, hashOTP, verifyOTP as verifyOTPCode, getOTPExpiry } from '
 import { generateTokens } from '../utils/jwt';
 import { logger } from '../utils/logger';
 import { AppError, ERROR_CODES } from '@escrow/shared';
+import { config } from '../config';
 
 const requestOTPSchema = z.object({
   phone: phoneSchema,
@@ -43,12 +44,12 @@ export const requestOTP = async (req: Request, res: Response) => {
       });
     }
 
-    // Delete old unused OTPs for this user
+    // Delete all unused OTPs for this user (expired or not)
+    // This prevents multiple valid OTPs from existing simultaneously
     await prisma.otpCode.deleteMany({
       where: {
         userId: user.id,
         isUsed: false,
-        expiresAt: { lt: new Date() },
       },
     });
 
@@ -68,8 +69,8 @@ export const requestOTP = async (req: Request, res: Response) => {
     res.json({
       message: 'OTP sent successfully',
       expiresIn: 5 * 60, // 5 minutes in seconds
-      // In development, return OTP for testing
-      ...(process.env.NODE_ENV === 'development' && { otp }),
+      // In development or test, return OTP for testing
+      ...((config.nodeEnv === 'development' || config.nodeEnv === 'test') && { otp }),
     });
   } catch (error) {
     logger.error('Request OTP error:', error);

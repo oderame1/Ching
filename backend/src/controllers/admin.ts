@@ -142,9 +142,9 @@ export const releaseEscrow = async (req: AuthRequest, res: Response) => {
         amount: escrow.amount,
         currency: escrow.currency,
         recipientAccount: escrow.seller.phone, // Placeholder - should be actual bank account
-        recipientBank: 'MONNIFY', // Placeholder
+        recipientBank: 'FLUTTERWAVE', // Placeholder
         recipientName: escrow.seller.name,
-        gateway: 'monnify', // Default
+        gateway: 'flutterwave', // Default
         reference: generateReference('PAYOUT'),
         status: TransactionStatus.PENDING,
       },

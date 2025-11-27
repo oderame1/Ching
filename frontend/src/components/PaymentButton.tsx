@@ -12,7 +12,7 @@ interface PaymentButtonProps {
 }
 
 export function PaymentButton({ escrowId }: PaymentButtonProps) {
-  const [gateway, setGateway] = useState<'paystack' | 'monnify'>('paystack');
+  const [gateway, setGateway] = useState<'paystack' | 'flutterwave'>('paystack');
   const [loading, setLoading] = useState(false);
 
   const handlePayment = async () => {
@@ -47,7 +47,7 @@ export function PaymentButton({ escrowId }: PaymentButtonProps) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="paystack">Paystack</SelectItem>
-          <SelectItem value="monnify">Monnify</SelectItem>
+          <SelectItem value="flutterwave">Flutterwave</SelectItem>
         </SelectContent>
       </Select>
       <Button onClick={handlePayment} disabled={loading} className="w-full">

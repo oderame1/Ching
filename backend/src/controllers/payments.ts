@@ -6,11 +6,11 @@ import { prisma } from '../utils/db';
 import { logger } from '../utils/logger';
 import { AppError, ERROR_CODES, EscrowState, PaymentStatus } from '@escrow/shared';
 import * as paystackService from '../services/paystack';
-import * as monnifyService from '../services/monnify';
+import * as flutterwaveService from '../services/flutterwave';
 
 const initializePaymentSchema = z.object({
   escrowId: escrowIdSchema,
-  gateway: z.enum(['paystack', 'monnify']),
+  gateway: z.enum(['paystack', 'flutterwave']),
   callbackUrl: z.string().url().optional(),
 });
 
@@ -70,11 +70,11 @@ export const initializePayment = async (req: AuthRequest, res: Response) => {
       });
       gatewayResponse = result;
     } else {
-      const result = await monnifyService.initializePayment({
+      const result = await flutterwaveService.initializePayment({
         email: escrow.buyer.email,
         amount: Number(escrow.amount),
         currency: escrow.currency,
-        paymentReference: reference,
+        txRef: reference,
         customerName: escrow.buyer.name,
         callbackUrl: data.callbackUrl,
         metadata: {
@@ -115,7 +115,7 @@ export const initializePayment = async (req: AuthRequest, res: Response) => {
       paymentUrl:
         data.gateway === 'paystack'
           ? gatewayResponse.data.authorization_url
-          : gatewayResponse.responseBody.checkoutUrl,
+          : gatewayResponse.data.link,
     });
   } catch (error) {
     logger.error('Initialize payment error:', error);

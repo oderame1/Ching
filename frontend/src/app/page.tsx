@@ -29,6 +29,13 @@ export default function Home() {
               </Button>
             </Link>
           </div>
+          <div className="mt-6">
+            <Link href="/test-hub">
+              <Button size="lg" variant="outline" className="text-lg px-8">
+                🧪 Testing Hub
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </main>

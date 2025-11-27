@@ -8,7 +8,7 @@ export enum PaymentStatus {
 
 export enum PaymentGateway {
   PAYSTACK = 'paystack',
-  MONNIFY = 'monnify',
+  FLUTTERWAVE = 'flutterwave',
 }
 
 export interface Payment {

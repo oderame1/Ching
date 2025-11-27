@@ -3,7 +3,7 @@ import { prisma } from '../utils/db';
 import { logger } from '../utils/logger';
 import { AppError, ERROR_CODES, EscrowState, PaymentStatus, generateReference } from '@escrow/shared';
 import * as paystackService from '../services/paystack';
-import * as monnifyService from '../services/monnify';
+import * as flutterwaveService from '../services/flutterwave';
 
 export const handlePaystackWebhook = async (req: Request, res: Response) => {
   try {
@@ -122,9 +122,9 @@ export const handlePaystackWebhook = async (req: Request, res: Response) => {
   }
 };
 
-export const handleMonnifyWebhook = async (req: Request, res: Response) => {
+export const handleFlutterwaveWebhook = async (req: Request, res: Response) => {
   try {
-    const signature = req.headers['monnify-signature'] as string;
+    const signature = req.headers['verif-hash'] as string;
 
     if (!signature) {
       throw new AppError(ERROR_CODES.WEBHOOK_INVALID, 'Missing signature', 401);
@@ -132,46 +132,54 @@ export const handleMonnifyWebhook = async (req: Request, res: Response) => {
 
     // Verify signature
     const rawBody = JSON.stringify(req.body);
-    const isValid = monnifyService.verifyWebhookSignature(rawBody, signature);
+    const isValid = flutterwaveService.verifyWebhookSignature(rawBody, signature);
 
     if (!isValid) {
       throw new AppError(ERROR_CODES.WEBHOOK_INVALID, 'Invalid signature', 401);
     }
 
-    const eventType = req.body.eventType;
-    const eventData = req.body.eventData;
+    const event = req.body.event;
+    const data = req.body.data;
 
     // Store webhook event
     await prisma.webhookEvent.create({
       data: {
         type:
-          eventType === 'SUCCESSFUL_TRANSACTION'
-            ? 'monnify_payment_success'
-            : 'monnify_payment_failed',
-        gateway: 'monnify',
+          event === 'charge.completed' && data.status === 'successful'
+            ? 'flutterwave_payment_success'
+            : 'flutterwave_payment_failed',
+        gateway: 'flutterwave',
         payload: req.body,
         signature,
       },
     });
 
     // Process successful payment
-    if (eventType === 'SUCCESSFUL_TRANSACTION') {
-      const paymentReference = eventData.paymentReference;
+    if (event === 'charge.completed' && data.status === 'successful') {
+      const txRef = data.tx_ref;
 
       // Find payment
       const payment = await prisma.payment.findUnique({
-        where: { reference: paymentReference },
+        where: { reference: txRef },
         include: { escrow: true },
       });
 
       if (!payment) {
-        logger.warn(`Payment not found for reference: ${paymentReference}`);
+        logger.warn(`Payment not found for reference: ${txRef}`);
         return res.status(200).json({ received: true });
       }
 
       // Idempotency check
       if (payment.status === PaymentStatus.COMPLETED) {
-        logger.info(`Payment already processed: ${paymentReference}`);
+        logger.info(`Payment already processed: ${txRef}`);
+        return res.status(200).json({ received: true });
+      }
+
+      // Verify payment with Flutterwave
+      const verification = await flutterwaveService.verifyPayment(txRef);
+
+      if (verification.status !== 'success') {
+        logger.error(`Payment verification failed: ${txRef}`);
         return res.status(200).json({ received: true });
       }
 
@@ -180,7 +188,7 @@ export const handleMonnifyWebhook = async (req: Request, res: Response) => {
         where: { id: payment.id },
         data: {
           status: PaymentStatus.COMPLETED,
-          gatewayResponse: eventData,
+          gatewayResponse: verification.data,
         },
       });
 
@@ -203,7 +211,7 @@ export const handleMonnifyWebhook = async (req: Request, res: Response) => {
           status: 'completed',
           reference: generateReference('TXN'),
           gateway: payment.gateway,
-          gatewayResponse: eventData,
+          gatewayResponse: verification.data,
           processedAt: new Date(),
         },
       });
@@ -211,8 +219,8 @@ export const handleMonnifyWebhook = async (req: Request, res: Response) => {
       // Mark webhook as processed
       await prisma.webhookEvent.updateMany({
         where: {
-          gateway: 'monnify',
-          payload: { path: ['eventData', 'paymentReference'], equals: paymentReference },
+          gateway: 'flutterwave',
+          payload: { path: ['data', 'tx_ref'], equals: txRef },
           isProcessed: false,
         },
         data: {
@@ -221,14 +229,14 @@ export const handleMonnifyWebhook = async (req: Request, res: Response) => {
         },
       });
 
-      logger.info(`Payment processed: ${paymentReference} for escrow ${payment.escrowId}`);
+      logger.info(`Payment processed: ${txRef} for escrow ${payment.escrowId}`);
 
       // TODO: Queue notification jobs
     }
 
     res.status(200).json({ received: true });
   } catch (error) {
-    logger.error('Monnify webhook error:', error);
+    logger.error('Flutterwave webhook error:', error);
     res.status(200).json({ received: true, error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

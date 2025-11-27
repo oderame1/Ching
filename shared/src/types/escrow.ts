@@ -24,7 +24,7 @@ export interface Escrow {
   description: string;
   state: EscrowState;
   paymentReference?: string;
-  paymentGateway?: 'paystack' | 'monnify';
+  paymentGateway?: 'paystack' | 'flutterwave';
   expiresAt?: Date;
   paidAt?: Date;
   deliveredAt?: Date;
