@@ -5,6 +5,6 @@ var WebhookEventType;
 (function (WebhookEventType) {
     WebhookEventType["PAYSTACK_PAYMENT_SUCCESS"] = "paystack.payment.success";
     WebhookEventType["PAYSTACK_PAYMENT_FAILED"] = "paystack.payment.failed";
-    WebhookEventType["MONNIFY_PAYMENT_SUCCESS"] = "monnify.payment.success";
-    WebhookEventType["MONNIFY_PAYMENT_FAILED"] = "monnify.payment.failed";
+    WebhookEventType["FLUTTERWAVE_PAYMENT_SUCCESS"] = "flutterwave.payment.success";
+    WebhookEventType["FLUTTERWAVE_PAYMENT_FAILED"] = "flutterwave.payment.failed";
 })(WebhookEventType || (exports.WebhookEventType = WebhookEventType = {}));

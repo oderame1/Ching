@@ -12,5 +12,5 @@ var PaymentStatus;
 var PaymentGateway;
 (function (PaymentGateway) {
     PaymentGateway["PAYSTACK"] = "paystack";
-    PaymentGateway["MONNIFY"] = "monnify";
+    PaymentGateway["FLUTTERWAVE"] = "flutterwave";
 })(PaymentGateway || (exports.PaymentGateway = PaymentGateway = {}));

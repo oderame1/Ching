@@ -77,6 +77,7 @@ model User {
   sellerEscrows Escrow[] @relation("SellerEscrows")
   otpCodes      OtpCode[]
   auditTrails   AuditTrail[]
+  fileUploads   FileUpload[]
 
   @@index([email])
   @@index([phone])
@@ -112,6 +113,7 @@ model Escrow {
   payments        Payment[]
   transactions    Transaction[]
   payout          Payout?
+  fileUploads     FileUpload[]
   notificationLogs NotificationLog[]
 
   @@index([buyerId])
@@ -268,3 +270,23 @@ model WebhookEvent {
   @@index([createdAt])
 }
 
+model FileUpload {
+  id        String   @id @default(uuid())
+  userId    String
+  escrowId  String?
+  filename  String
+  fileKey   String   // S3 key or Cloudinary public_id
+  fileUrl   String   @db.Text
+  mimeType  String
+  size      Int
+  provider  String   // 's3', 'cloudinary', or 'local'
+  createdAt DateTime @default(now())
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  escrow Escrow? @relation(fields: [escrowId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([escrowId])
+  @@index([createdAt])
+}

@@ -3,7 +3,7 @@ import { config } from '../config';
 
 export const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 50, // Security: Reduced to 50 requests per 15 minutes (was 100)
   message: 'Too many requests from this IP, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
@@ -11,9 +11,21 @@ export const rateLimiter = rateLimit({
 
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5, // 5 login attempts per 15 minutes
+  max: 3, // Security: Reduced to 3 login attempts per 15 minutes
   message: 'Too many authentication attempts, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
   skipSuccessfulRequests: true,
+});
+
+// Stricter rate limiter for OTP requests
+export const otpRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 3, // Security: Limit OTP requests to 3 per 15 minutes
+  message: 'Too many OTP requests, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
 });
 
 export const webhookRateLimiter = rateLimit({

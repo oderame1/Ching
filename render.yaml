@@ -1,0 +1,86 @@
+# Render Configuration for Backend
+# https://render.com/
+
+services:
+  - type: web
+    name: escrow-backend
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install && npm run generate --workspace=backend && npm run build --workspace=backend
+    startCommand: npm run start --workspace=backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: escrow-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: escrow-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+      - key: OTP_SECRET
+        generateValue: true
+      # Add these manually in Render dashboard:
+      # PAYSTACK_SECRET_KEY
+      # PAYSTACK_PUBLIC_KEY
+      # PAYSTACK_WEBHOOK_SECRET
+      # SENDGRID_API_KEY
+      # TERMII_API_KEY
+      # STORAGE_PROVIDER
+      # AWS credentials or Cloudinary credentials
+    healthCheckPath: /health
+    
+  - type: worker
+    name: escrow-worker
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install && npm run build --workspace=worker
+    startCommand: npm run start --workspace=worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: escrow-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: escrow-redis
+          property: connectionString
+
+  - type: web
+    name: escrow-webhooks
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install && npm run build --workspace=webhooks
+    startCommand: npm run start --workspace=webhooks
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: escrow-db
+          property: connectionString
+      - key: PAYSTACK_WEBHOOK_SECRET
+        sync: false
+      - key: FLUTTERWAVE_WEBHOOK_SECRET
+        sync: false
+
+databases:
+  - name: escrow-db
+    databaseName: escrow_production
+    user: escrow_user
+    plan: starter
+
+  - name: escrow-redis
+    plan: starter

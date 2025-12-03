@@ -6,6 +6,7 @@ import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
 import { rateLimiter } from './middleware/rateLimiter';
+import { sanitizeInput } from './middleware/sanitize';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -17,6 +18,7 @@ import userRoutes from './routes/users';
 import adminRoutes from './routes/admin';
 import webhookRoutes from './routes/webhooks';
 import devRoutes from './routes/dev';
+import uploadRoutes from './routes/uploads';
 
 const app = express();
 
@@ -78,8 +80,13 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Security: Limit request body size to prevent DoS attacks
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// Security: Sanitize all inputs to prevent injection attacks
+app.use(sanitizeInput);
+
 app.use(requestLogger);
 
 // Health check with database connectivity
@@ -88,16 +95,16 @@ app.get('/health', async (req, res) => {
     // Test database connection
     const { prisma } = await import('./utils/db');
     await prisma.$queryRaw`SELECT 1`;
-    
-    res.json({ 
-      status: 'ok', 
+
+    res.json({
+      status: 'ok',
       timestamp: new Date().toISOString(),
       database: 'connected'
     });
   } catch (error: any) {
     logger.error('Health check failed:', error);
-    res.status(503).json({ 
-      status: 'degraded', 
+    res.status(503).json({
+      status: 'degraded',
       timestamp: new Date().toISOString(),
       database: 'disconnected',
       error: config.nodeEnv === 'development' ? error.message : undefined
@@ -112,6 +119,7 @@ app.use('/api/payments', rateLimiter, paymentRoutes);
 app.use('/api/payouts', rateLimiter, payoutRoutes);
 app.use('/api/notifications', rateLimiter, notificationRoutes);
 app.use('/api/users', rateLimiter, userRoutes);
+app.use('/api/uploads', rateLimiter, uploadRoutes); // File upload endpoints
 app.use('/api/admin', adminRoutes); // IP allowlist applied in route
 app.use('/api/webhooks', webhookRoutes); // Webhooks bypass rate limiting
 
@@ -148,12 +156,12 @@ const gracefulShutdown = async (signal: string) => {
     server.close(() => {
       logger.info('HTTP server closed');
     });
-    
+
     // Close database connections
     const { prisma } = await import('./utils/db');
     await prisma.$disconnect();
     logger.info('Database connections closed');
-    
+
     process.exit(0);
   } catch (error) {
     logger.error('Error during shutdown:', error);

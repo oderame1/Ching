@@ -1,0 +1,37 @@
+# Railway Configuration for Backend
+# https://railway.app/
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm install && npm run generate --workspace=backend && npm run build --workspace=backend"
+
+[deploy]
+startCommand = "npm run start --workspace=backend"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[variables]
+# Railway will automatically set PORT
+NODE_ENV = "production"
+
+# Add these as environment variables in Railway dashboard:
+# DATABASE_URL
+# REDIS_URL
+# JWT_SECRET
+# REFRESH_TOKEN_SECRET
+# OTP_SECRET
+# PAYSTACK_SECRET_KEY
+# PAYSTACK_PUBLIC_KEY
+# PAYSTACK_WEBHOOK_SECRET
+# FLUTTERWAVE_SECRET_KEY (optional)
+# SENDGRID_API_KEY
+# TERMII_API_KEY
+# STORAGE_PROVIDER
+# AWS_ACCESS_KEY_ID (if using S3)
+# AWS_SECRET_ACCESS_KEY (if using S3)
+# AWS_S3_BUCKET (if using S3)
+# CLOUDINARY_CLOUD_NAME (if using Cloudinary)
+# CLOUDINARY_API_KEY (if using Cloudinary)
+# CLOUDINARY_API_SECRET (if using Cloudinary)
