@@ -1,0 +1,23 @@
+{
+  "name": "Escrow Platform",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "backend",
+      "command": "npm run dev:backend"
+    },
+    {
+      "name": "frontend",
+      "command": "npm run dev:frontend"
+    },
+    {
+      "name": "worker",
+      "command": "npm run dev:worker"
+    },
+    {
+      "name": "webhooks",
+      "command": "npm run dev:webhooks"
+    }
+  ]
+}
