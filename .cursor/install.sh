@@ -6,6 +6,17 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Install PostgreSQL + Redis at the system level so the environment is
+# self-contained (no snapshot/base-image dependency). apt is idempotent, and
+# with environment builds this cost is paid once when the baseline is created.
+echo "==> Ensuring PostgreSQL and Redis are installed"
+if ! command -v pg_ctlcluster >/dev/null 2>&1 || ! command -v redis-server >/dev/null 2>&1; then
+  sudo apt-get update -qq
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql postgresql-contrib redis-server
+else
+  echo "    PostgreSQL and Redis already installed; skipping apt."
+fi
+
 echo "==> Installing JavaScript dependencies (npm ci)"
 npm ci
 
