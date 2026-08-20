@@ -41,6 +41,9 @@ router.get('/otp/:phone', asyncHandler(async (req, res) => {
             expiresAt: otpCode.expiresAt,
             createdAt: otpCode.createdAt,
         });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to retrieve OTP' });
+    }
 }));
 
 export default router;

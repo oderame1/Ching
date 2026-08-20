@@ -2,8 +2,9 @@
 // It uses the same webhook handlers from the backend but runs as a standalone service
 // This allows scaling webhook processing separately from the main API
 
+import './loadEnv';
 import express from 'express';
-import { handlePaystackWebhook, handleMonnifyWebhook } from './handlers';
+import { handlePaystackWebhook, handleFlutterwaveWebhook } from './handlers';
 import { webhookRateLimiter } from './middleware/rateLimiter';
 import { logger } from './utils/logger';
 
@@ -20,7 +21,7 @@ app.get('/health', (req, res) => {
 
 // Webhook routes
 app.post('/webhooks/paystack', handlePaystackWebhook);
-app.post('/webhooks/monnify', handleMonnifyWebhook);
+app.post('/webhooks/flutterwave', handleFlutterwaveWebhook);
 
 const PORT = process.env.PORT || 3002;
 

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
-import { asyncHandler } from '../middleware/errorHandler';
+import { asyncHandler } from '../utils/asyncHandler';
 import * as uploadsController from '../controllers/uploads';
 
 const router = Router();
