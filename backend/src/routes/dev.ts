@@ -41,6 +41,9 @@ router.get('/otp/:phone', asyncHandler(async (req, res) => {
             expiresAt: otpCode.expiresAt,
             createdAt: otpCode.createdAt,
         });
+    } catch (error) {
+        return res.status(500).json({ error: 'Internal server error' });
+    }
 }));
 
 export default router;
